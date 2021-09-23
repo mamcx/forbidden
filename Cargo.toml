@@ -1,0 +1,30 @@
+[package]
+name = "forbidden"
+version = "0.1.0"
+authors = ["Mario Alejandro Montoya <mamcx@elmalabarista.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/mamcx/forbidden"
+homepage = "https://github.com/mamcx/forbidden"
+description = """
+An auth library for Rust applications.
+"""
+keywords = ["auth", "authentication", "password", "argon2", "scrypt"]
+readme = "README.md"
+categories = ["development-tools::build-utils"]
+exclude = ["/.github"]
+edition = "2018"
+
+[features]
+recommend=["use_argon"]
+use_argon=[]
+use_scrypt=[]
+
+#TIP: Use cargo tree to make the versions match!
+[dependencies]
+password-hash = "0.3.0"
+rand_core = "0.6.3"
+#Recomened hashing algorithms
+argon2 = { version = "0.3", features = ["std"] }
+scrypt = {version = "0.8.0"}
+
+unicase = "2.6.0"
