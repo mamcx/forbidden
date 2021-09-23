@@ -1,25 +1,37 @@
-//! A safely constructed Password according to OWASP
+//! A safely constructed Password according to [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 //!
-//! The password use a [PHC String format](https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#specification)
-//! as the proper way to store and retrieve passwords.
+//! The password use a [PHC String](https://github.com/P-H-C/phc-string-format/blob/master/phc-sf-spec.md#specification)
+//! as the proper way to store and retrieve passwords from a storage (like database or file).
+//!
+//! The default hashing algorithm is [PasswordAlgo::Argon2].
+//!
+//! Use the field `password.phc` as the value to store.
 //!
 //! # Examples
 //!
 //! ```
 //! use forbidden::prelude::*;
-//! use std::str::FromStr;
+//! use forbidden::password::CHECKER_MIN_SIZE;
 //!
-//! let p = Password::hash("hi").unwrap();
-//! dbg!(p);
+//! // Sorry, you can't cheat and pass a unsafe password without use `unsafe`, ugh!
+//! assert!(unsafe{Password::hash_unsafe("").is_ok()});
+//! assert!(unsafe{Password::hash_unsafe("hi").is_ok()});
+//!
+//! // To avoid `unsafe`, pass a checker that implement the trait [PasswordIsSafe]
+//! assert!(Password::hash_check("short", CHECKER_MIN_SIZE).is_err());
+//! // This checker verify is at least 8 chars long.
+//! assert!(Password::hash_check("12345678", CHECKER_MIN_SIZE).is_ok());
 //! ```
 
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-use crate::errors::AuthError;
+use crate::errors::{PasswordError, ResultPwd};
 use password_hash::{PasswordHash, SaltString};
 use rand_core::OsRng;
+
+// To make it easy to disable, put these on separate modules...
 
 pub mod hash_argon2 {
     use crate::password::Password;
@@ -68,6 +80,30 @@ pub mod hash_scrypt {
     }
 }
 
+pub trait PasswordIsSafe {
+    fn is_safe(&self, raw: &str) -> ResultPwd<()>;
+}
+
+/// The minimum size in chars for a password to be safe.
+pub const MINIMUM_PASSWORD_LENGTH: usize = 8;
+
+/// A convenient constant for get a constructed [CheckPasswordMinSize].
+pub const CHECKER_MIN_SIZE: CheckPasswordMinSize = CheckPasswordMinSize {};
+
+/// A password checker that verify is at least [MINIMUM_PASSWORD_LENGTH] chars long.
+pub struct CheckPasswordMinSize {}
+
+impl PasswordIsSafe for CheckPasswordMinSize {
+    fn is_safe(&self, raw: &str) -> ResultPwd<()> {
+        let provided = raw.trim().chars().count();
+        if provided < MINIMUM_PASSWORD_LENGTH {
+            return Err(PasswordError::MinimumPasswordLength { provided });
+        }
+
+        Ok(())
+    }
+}
+
 /// A list of the recommended algorithms for password hashing,
 /// according to [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -77,7 +113,7 @@ pub enum PasswordAlgo {
 }
 
 impl TryFrom<&PasswordHash<'_>> for PasswordAlgo {
-    type Error = AuthError;
+    type Error = PasswordError;
 
     fn try_from(value: &PasswordHash<'_>) -> Result<Self, Self::Error> {
         if hash_argon2::ARGON_IDENT.contains(&value.algorithm) {
@@ -88,26 +124,37 @@ impl TryFrom<&PasswordHash<'_>> for PasswordAlgo {
             return Ok(PasswordAlgo::Scrypt);
         }
 
-        Err(AuthError::InvalidPasswordAlgo(
-            value.algorithm.as_str().to_string(),
-        ))
+        Err(PasswordError::InvalidPasswordAlgo {
+            provided: value.algorithm.as_str().to_string(),
+        })
     }
 }
 
 impl PasswordAlgo {
     //https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#bcrypt
-    fn max_length(&self) -> Option<usize> {
+    fn max_length(&self) -> usize {
         match self {
-            PasswordAlgo::Argon2 => Some(argon2::MAX_PWD_LEN),
-            PasswordAlgo::Scrypt => Some(72),
+            PasswordAlgo::Argon2 => argon2::MAX_PWD_LEN,
+            PasswordAlgo::Scrypt => 72,
         }
     }
 }
 
-/// A safely constructed Password
+impl PasswordIsSafe for PasswordAlgo {
+    fn is_safe(&self, raw: &str) -> ResultPwd<()> {
+        let provided = raw.trim().chars().count();
+        if provided > self.max_length() {
+            Err(PasswordError::MaximumPasswordLength { provided })
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/// A safely constructed [Password]
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Password {
-    phc: String,
+    pub phc: String,
     algo: PasswordAlgo,
 }
 
@@ -120,30 +167,74 @@ impl Password {
         }
     }
 
-    /// Load a password from a PCH formatted string, use this for load from a Storage
-    pub fn new(phc: &str) -> Result<Self, AuthError> {
+    /// Load a password from a PCH formatted string. (Use this for load from a Storage)
+    pub fn new(phc: &str) -> ResultPwd<Self> {
         let hash = PasswordHash::new(phc)?;
         let algo: PasswordAlgo = (&hash).try_into()?;
+        //Check the max size
+        algo.is_safe(phc)?;
         Ok(Self::_new(hash, algo))
     }
 
-    /// Hash a raw string into a PCH salted string using recommended algorithm (`Argon2` as 2021)
-    pub fn hash(raw: &str) -> Result<Self, AuthError> {
-        Self::hash_argon(raw)
+    /// Hash a raw string into a PCH salted string using recommended algorithm ([argon2::Argon2] as 2021)
+    /// and verify is safe using a checker
+    pub fn hash_check(raw: &str, check: impl PasswordIsSafe) -> ResultPwd<Self> {
+        Self::hash_argon(raw, check)
     }
 
-    /// Hash a raw string into a PCH salted string using `Argon2`
-    pub fn hash_argon(raw: &str) -> Result<Self, AuthError> {
-        let salt = Password::salt();
-        let hash = hash_argon2::hash_password(raw.as_ref(), &salt)?;
-        Ok(Self::_new(hash, PasswordAlgo::Argon2))
-    }
-
-    /// Return the constructed hash from the internal `String`
+    /// Hash a raw string into a PCH salted string using recommended algorithm ([argon2::Argon2] as 2021)
     ///
     /// # Safety
     ///
-    /// At this point the internal string is always a correct PHC in the defined `PasswordAlgo`
+    /// This is marked unsafe because allow to use empty string, short password, leaked passwords, etc
+    /// use [Self::hash_check] and prove the password is safe instead
+    ///
+    /// Available because is useful for testing or for provide a way to upgrade later to a strong password.
+    pub unsafe fn hash_unsafe(raw: &str) -> ResultPwd<Self> {
+        Self::hash_argon_unsafe(raw)
+    }
+
+    /// Hash a raw string into a PCH salted string using [argon2::Argon2]
+    /// and verify is safe using a checker
+    pub fn hash_argon(raw: &str, check: impl PasswordIsSafe) -> ResultPwd<Self> {
+        check.is_safe(raw)?;
+        unsafe { Self::hash_argon_unsafe(raw) }
+    }
+
+    /// Hash a raw string into a PCH salted string using [argon2::Argon2]
+    ///
+    /// # Safety
+    ///
+    /// Check comment on [Self::hash_unsafe]
+    pub unsafe fn hash_argon_unsafe(raw: &str) -> ResultPwd<Self> {
+        let salt = Password::salt();
+        let hash = hash_argon2::hash_password(raw, &salt)?;
+        Ok(Self::_new(hash, PasswordAlgo::Argon2))
+    }
+
+    /// Hash a raw string into a PCH salted string using [scrypt::Scrypt]
+    /// and verify is safe using a checker
+    pub fn hash_scrypt(raw: &str, check: impl PasswordIsSafe) -> ResultPwd<Self> {
+        check.is_safe(raw)?;
+        unsafe { Self::hash_scrypt_unsafe(raw) }
+    }
+
+    /// Hash a raw string into a PCH salted string using [scrypt::Scrypt]
+    ///
+    /// # Safety
+    ///
+    /// Check comment on [Self::hash_unsafe]
+    pub unsafe fn hash_scrypt_unsafe(raw: &str) -> ResultPwd<Self> {
+        let salt = Password::salt();
+        let hash = hash_scrypt::hash_password(raw, &salt)?;
+        Ok(Self::_new(hash, PasswordAlgo::Scrypt))
+    }
+
+    /// Return the constructed hash_unsafe from the internal [String]
+    ///
+    /// # Safety
+    ///
+    /// At this point the internal string is always a correct PHC in the defined [PasswordAlgo]
     pub fn get_hash(&self) -> PasswordHash {
         PasswordHash::new(&self.phc).unwrap()
     }
@@ -156,14 +247,23 @@ impl Password {
     /// use forbidden::prelude::*;
     /// use std::str::FromStr;
     ///
-    /// let p = Password::hash("hi").unwrap();
+    /// let p = unsafe{ Password::hash_unsafe("hi").unwrap() };
+    /// // Verify if the password match...
     /// assert!(p.validate_password("hi").is_ok());
     ///
     /// //Also can be used with equality in case you don't care for the error causes of not matching:
     /// assert_eq!(p, "hi");
     /// ```
-    pub fn validate_password(&self, against: &str) -> Result<(), AuthError> {
-        hash_argon2::validate_password(&self, against)?;
+    pub fn validate_password(&self, against: &str) -> Result<(), PasswordError> {
+        match self.algo {
+            PasswordAlgo::Argon2 => {
+                hash_argon2::validate_password(self, against)?;
+            }
+            PasswordAlgo::Scrypt => {
+                hash_scrypt::validate_password(self, against)?;
+            }
+        }
+
         Ok(())
     }
 
@@ -174,7 +274,7 @@ impl Password {
 }
 
 impl FromStr for Password {
-    type Err = AuthError;
+    type Err = PasswordError;
 
     fn from_str(phc: &str) -> Result<Self, Self::Err> {
         Self::new(phc)
@@ -187,7 +287,7 @@ impl PartialEq<&str> for Password {
     }
 }
 
-/// When using `Display` trait, not allow to leak the details of the `Password`
+/// When using [Display] trait, not allow to leak the details of the [Password]
 impl Display for Password {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "****")

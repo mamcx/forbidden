@@ -1,4 +1,3 @@
-use crate::errors::ResultAuth;
 use crate::identity::Identity;
 use crate::password::Password;
 
