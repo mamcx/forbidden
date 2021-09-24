@@ -1,10 +1,12 @@
-# Rust : Forbidden
+# Rust : Forbidden (WIP)
 
-> An experimental auth library for Rust applications
+An experimental auth library for Rust applications.
 
 ### Goals
 
 This crate is to define a common set of traits and idioms to provide for most applications with a way to incorporate authentication.
+
+### Non-goals
 
 Is **NOT** the place to put the specific implementations for web/OS/etc.
 

@@ -13,14 +13,14 @@
 //! use forbidden::prelude::*;
 //! use forbidden::password::CHECKER_MIN_SIZE;
 //!
-//! // Sorry, you can't cheat and pass a unsafe password without use `unsafe`, ugh!
+//! // Sorry, you can't cheat and pass a unsafe password without `unsafe`, ugh!
 //! assert!(unsafe{Password::hash_unsafe("").is_ok()});
 //! assert!(unsafe{Password::hash_unsafe("hi").is_ok()});
 //!
 //! // To avoid `unsafe`, pass a checker that implement the trait [PasswordIsSafe]
-//! assert!(Password::hash_check("short", CHECKER_MIN_SIZE).is_err());
+//! assert!(Password::hash("short", CHECKER_MIN_SIZE).is_err());
 //! // This checker verify is at least 8 chars long.
-//! assert!(Password::hash_check("12345678", CHECKER_MIN_SIZE).is_ok());
+//! assert!(Password::hash("12345678", CHECKER_MIN_SIZE).is_ok());
 //! ```
 
 use std::convert::{TryFrom, TryInto};
@@ -80,6 +80,26 @@ pub mod hash_scrypt {
     }
 }
 
+/// This trait allow to define rules to check if the raw password [&str] is safe to store.
+///
+/// # Examples
+///
+/// Verify the password have a minimum length in chars (this is implemented already with [CHECKER_MIN_SIZE]).
+/// ```
+/// use forbidden::prelude::*;
+///
+/// struct CheckPassword {}
+///
+/// impl PasswordIsSafe for CheckPassword {
+///    fn is_safe(&self, raw: &str) -> ResultPwd<()> {
+///         let provided = raw.trim().chars().count();
+///         if provided < 8 {
+///             return Err(PasswordError::MinimumPasswordLength { provided });
+///         }
+///         Ok(())
+///     }
+/// }
+///```
 pub trait PasswordIsSafe {
     fn is_safe(&self, raw: &str) -> ResultPwd<()>;
 }
@@ -178,7 +198,7 @@ impl Password {
 
     /// Hash a raw string into a PCH salted string using recommended algorithm ([argon2::Argon2] as 2021)
     /// and verify is safe using a checker
-    pub fn hash_check(raw: &str, check: impl PasswordIsSafe) -> ResultPwd<Self> {
+    pub fn hash(raw: &str, check: impl PasswordIsSafe) -> ResultPwd<Self> {
         Self::hash_argon(raw, check)
     }
 
@@ -187,7 +207,7 @@ impl Password {
     /// # Safety
     ///
     /// This is marked unsafe because allow to use empty string, short password, leaked passwords, etc
-    /// use [Self::hash_check] and prove the password is safe instead
+    /// use [Self::hash] and prove the password is safe instead
     ///
     /// Available because is useful for testing or for provide a way to upgrade later to a strong password.
     pub unsafe fn hash_unsafe(raw: &str) -> ResultPwd<Self> {
