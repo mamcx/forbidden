@@ -58,6 +58,7 @@ pub mod hash_argon2 {
     }
 }
 
+#[cfg(feature = "use_scrypt")]
 pub mod hash_scrypt {
     use crate::password::Password;
     use password_hash::{Ident, PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
@@ -140,6 +141,7 @@ impl TryFrom<&PasswordHash<'_>> for PasswordAlgo {
             return Ok(PasswordAlgo::Argon2);
         }
 
+        #[cfg(feature = "use_scrypt")]
         if hash_scrypt::SCRYPT_IDENT.contains(&value.algorithm) {
             return Ok(PasswordAlgo::Scrypt);
         }
@@ -232,6 +234,7 @@ impl Password {
         Ok(Self::_new(hash, PasswordAlgo::Argon2))
     }
 
+    #[cfg(feature = "use_scrypt")]
     /// Hash a raw string into a PCH salted string using [scrypt::Scrypt]
     /// and verify is safe using a checker
     pub fn hash_scrypt(raw: &str, check: impl PasswordIsSafe) -> ResultPwd<Self> {
@@ -239,6 +242,7 @@ impl Password {
         unsafe { Self::hash_scrypt_unsafe(raw) }
     }
 
+    #[cfg(feature = "use_scrypt")]
     /// Hash a raw string into a PCH salted string using [scrypt::Scrypt]
     ///
     /// # Safety
@@ -280,7 +284,12 @@ impl Password {
                 hash_argon2::validate_password(self, against)?;
             }
             PasswordAlgo::Scrypt => {
+                #[cfg(feature = "use_scrypt")]
                 hash_scrypt::validate_password(self, against)?;
+                #[cfg(not(feature = "use_scrypt"))]
+                return Err(PasswordError::InvalidPasswordAlgo {
+                    provided: "Scrypt".to_string(),
+                });
             }
         }
 

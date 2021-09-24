@@ -1,32 +1,27 @@
-use crate::identity::Identity;
-use crate::password::Password;
+use std::collections::HashMap;
 
-pub struct UserAnonymous {
-    username: String,
+use crate::credentials::*;
+use crate::identity::{Identity, REALM_DEFAULT};
+use crate::properties::Properties;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct User {
+    user_id: String,
+    credential: UserPass,
     realm: Option<String>,
+    properties: Option<HashMap<String, Properties>>,
 }
 
-impl Identity for UserAnonymous {
+impl Identity for User {
     fn identity_id(&self) -> &str {
-        &self.username
+        &self.user_id
     }
-}
 
-pub struct UserPass {
-    username: String,
-    pwd: Password,
-    realm: Option<String>,
-}
+    fn realm(&self) -> &str {
+        self.realm.as_deref().unwrap_or(REALM_DEFAULT)
+    }
 
-pub struct EmailPass {
-    username: String,
-    email: String,
-    pwd: Password,
-    realm: Option<String>,
-}
-
-impl Identity for UserPass {
-    fn identity_id(&self) -> &str {
-        &self.username
+    fn credentials(&self) -> Vec<Credential> {
+        vec![(&self.credential).into()]
     }
 }

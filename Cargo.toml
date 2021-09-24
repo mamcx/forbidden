@@ -15,16 +15,15 @@ exclude = ["/.github"]
 edition = "2018"
 
 [features]
-recommend=["use_argon"]
-use_argon=[]
-use_scrypt=[]
+use_scrypt=["scrypt"]
 
 #TIP: Use cargo tree to make the versions match!
 [dependencies]
 password-hash = "0.3.0"
 rand_core = "0.6.3"
+chrono= {version = "0.4.19", features = [] }
+
 #Recomened hashing algorithms
 argon2 = { version = "0.3", features = ["std"] }
-scrypt = {version = "0.8.0"}
+scrypt = {version = "0.8.0", optional= true}
 
-unicase = "2.6.0"
