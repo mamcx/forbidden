@@ -1,7 +1,9 @@
-use crate::credentials::Credential;
+//! The [Identity] trait represent the "who" of a software that needs authentication.
+use std::collections::HashMap;
+
+use crate::credentials::{Credential, UserPass};
 use crate::errors::ResultAuth;
 use crate::properties::Properties;
-use std::collections::HashMap;
 
 /// A default realm name
 pub const REALM_DEFAULT: &str = "GLOBAL";
@@ -11,7 +13,11 @@ pub const REALM_DEFAULT: &str = "GLOBAL";
 pub trait Identity {
     /// A global, unique ID
     fn identity_id(&self) -> &str;
-    /// To which realm this belong
+    /// To show in the user interface
+    fn display_name(&self) -> Option<String> {
+        None
+    }
+    /// To which realm this belong (A realm manages a set of users, credentials, roles, and groups, like a company or web domain)
     fn realm(&self) -> &str {
         REALM_DEFAULT
     }
@@ -33,20 +39,26 @@ pub trait Identity {
     }
 }
 
-pub trait IdentityStore {
+/// An identity provider (IDP) is a service that can authenticate a user.
+pub trait IdentityProvider {
     type Identity: Identity;
+    type Credential;
     type Token;
 
     fn find(&self, id: &str) -> ResultAuth<Option<Self::Identity>>;
+    fn find_by_token(&self, token: &Self::Token) -> ResultAuth<Option<Self::Identity>>;
 
-    fn login(&self, identity: &Self::Identity) -> ResultAuth<Self::Token>;
+    fn login(&self, identity: &Self::Credential) -> ResultAuth<Self::Token>;
 
     fn logout(&self, token: &Self::Token) -> ResultAuth<bool>;
 }
 
-pub trait IdentityStoreUserPwd: IdentityStore {
-    fn verify_password(&self, identity: &Self::Identity, password: &str)
-        -> ResultAuth<Self::Token>;
+pub trait IdentityProviderUserPwd: IdentityProvider {
+    fn verify_password(
+        &self,
+        identity: &Self::Credential,
+        password: &str,
+    ) -> ResultAuth<Self::Token>;
 }
 
 #[cfg(test)]
