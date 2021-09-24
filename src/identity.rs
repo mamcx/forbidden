@@ -1,7 +1,7 @@
 //! The [Identity] trait represent the "who" of a software that needs authentication.
 use std::collections::HashMap;
 
-use crate::credentials::{Credential, UserPass};
+use crate::credentials::Credential;
 use crate::errors::ResultAuth;
 use crate::properties::Properties;
 

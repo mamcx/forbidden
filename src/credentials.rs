@@ -95,16 +95,6 @@ pub enum Credential {
     Token(Token),
 }
 
-impl Credential {
-    fn password(&self) -> Option<&Password> {
-        match self {
-            Credential::Anon(_) | Credential::Token(_) => None,
-            Credential::User(x) => Some(&x.pwd),
-            Credential::UserEmail(x) => Some(&x.pwd),
-        }
-    }
-}
-
 impl From<UserPass> for Credential {
     fn from(x: UserPass) -> Self {
         Credential::User(x)
