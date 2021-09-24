@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use crate::credentials::Credential;
 use crate::errors::ResultAuth;
+use crate::forms::{EmailPassForm, UserPassForm};
 use crate::properties::Properties;
 
 /// A default realm name
@@ -39,32 +40,104 @@ pub trait Identity {
     }
 }
 
-/// An identity provider (IDP) is a service that can authenticate a user.
-pub trait IdentityProvider {
+/// An identity provider (IDP) is a service that can authenticate a user with a [crate::credentials] and return an Token.
+pub trait IdentityProvider<Credential, Token> {
     type Identity: Identity;
-    type Credential;
-    type Token;
 
     fn find(&self, id: &str) -> ResultAuth<Option<Self::Identity>>;
-    fn find_by_token(&self, token: &Self::Token) -> ResultAuth<Option<Self::Identity>>;
+    fn find_by_token(&self, token: &Token) -> ResultAuth<Option<Self::Identity>>;
 
-    fn login(&self, identity: &Self::Credential) -> ResultAuth<Self::Token>;
-
-    fn logout(&self, token: &Self::Token) -> ResultAuth<bool>;
+    fn logout(&self, token: &Token) -> ResultAuth<bool>;
 }
 
-pub trait IdentityProviderUserPwd: IdentityProvider {
-    fn verify_password(
-        &self,
-        identity: &Self::Credential,
-        password: &str,
-    ) -> ResultAuth<Self::Token>;
+/// An identity provider (IDP) that can authenticate a user with [UserPass] credential.
+pub trait IdentityProviderUserPwd<Token>: IdentityProvider<UserPassForm, Token> {
+    fn login(&self, identity: &UserPassForm) -> ResultAuth<Token> {
+        self.verify_password(identity)
+    }
+
+    fn verify_password(&self, credentials: &UserPassForm) -> ResultAuth<Token>;
+}
+
+/// An identity provider (IDP) that can authenticate a user with [EmailPass] credential.
+pub trait IdentityProviderEmailPwd<Token>: IdentityProvider<EmailPassForm, Token> {
+    fn login(&self, identity: &EmailPassForm) -> ResultAuth<Token> {
+        self.verify_password(identity)
+    }
+
+    fn verify_password(&self, credentials: &EmailPassForm) -> ResultAuth<Token>;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::ResultPwd;
+    use crate::password::{Password, PasswordIsSafe};
+    use crate::prelude::AuthError;
+    use crate::users::UserPass;
+
+    const TEST_PWD: &str = "1";
+    const USER_1: &str = "user1";
+    const USER_2: &str = "user2";
+
+    struct ByPass {}
+
+    impl PasswordIsSafe for ByPass {
+        fn is_safe(&self, _raw: &str) -> ResultPwd<()> {
+            Ok(())
+        }
+    }
+
+    struct TestProvider {
+        users: [UserPass; 2],
+    }
+
+    impl TestProvider {
+        pub fn new() -> Self {
+            let p = Password::hash(TEST_PWD, ByPass {}).unwrap();
+            let u1 = UserPass::new(USER_1, p.clone());
+            let u2 = UserPass::new(USER_2, p);
+
+            TestProvider { users: [u1, u2] }
+        }
+    }
+
+    impl IdentityProvider<UserPassForm, String> for TestProvider {
+        type Identity = UserPass;
+
+        fn find(&self, id: &str) -> ResultAuth<Option<Self::Identity>> {
+            Ok(self.users.iter().find(|x| x.identity_id() == id).cloned())
+        }
+
+        fn find_by_token(&self, _token: &String) -> ResultAuth<Option<Self::Identity>> {
+            todo!()
+        }
+
+        fn logout(&self, _token: &String) -> ResultAuth<bool> {
+            Ok(true)
+        }
+    }
+
+    impl IdentityProviderUserPwd<String> for TestProvider {
+        fn verify_password(&self, credentials: &UserPassForm) -> ResultAuth<String> {
+            if let Some(user) = self.find(&credentials.username)? {
+                user.pwd.validate_password(&credentials.pwd)?;
+                Ok(credentials.username.clone())
+            } else {
+                Err(AuthError::UserNotFound {
+                    named: credentials.username.clone(),
+                })
+            }
+        }
+    }
 
     #[test]
-    fn it_works() {}
+    fn email_provider() {
+        let idp = TestProvider::new();
+
+        let mut form = UserPassForm::new(USER_1, "wrong");
+        assert!(idp.login(&form).is_err());
+        form.pwd = TEST_PWD.into();
+        assert!(idp.login(&form).is_ok());
+    }
 }

@@ -1,5 +1,6 @@
 pub mod credentials;
 mod errors;
+mod forms;
 pub mod identity;
 pub mod password;
 mod properties;

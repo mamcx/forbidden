@@ -19,6 +19,10 @@ impl From<password_hash::Error> for PasswordError {
 #[derive(Debug)]
 pub enum AuthError {
     Password(PasswordError),
+    IdentityNotFound { named: String },
+    EmailNotFound { email: String },
+    UserNotFound { named: String },
+    TokenNotFound { token: String },
 }
 
 impl From<PasswordError> for AuthError {
