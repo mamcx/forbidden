@@ -132,8 +132,10 @@ mod tests {
     }
 
     #[test]
-    fn email_provider() {
+    fn user_provider() {
         let idp = TestProvider::new();
+
+        assert!(idp.find(USER_1).map(|x| x.is_some()).unwrap_or(false));
 
         let mut form = UserPassForm::new(USER_1, "wrong");
         assert!(idp.login(&form).is_err());

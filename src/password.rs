@@ -269,7 +269,6 @@ impl Password {
     ///
     /// ```
     /// use forbidden::prelude::*;
-    /// use std::str::FromStr;
     ///
     /// let p = unsafe{ Password::hash_unsafe("hi").unwrap() };
     /// // Verify if the password match...
