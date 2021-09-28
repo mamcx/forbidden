@@ -10,7 +10,7 @@ An auth library for Rust applications.
 """
 keywords = ["auth", "authentication", "password", "argon2", "scrypt"]
 readme = "README.md"
-categories = ["development-tools::build-utils"]
+categories = ["authentication"]
 exclude = ["/.github"]
 edition = "2018"
 
@@ -19,13 +19,13 @@ use_scrypt=["scrypt"]
 
 #TIP: Use cargo tree to make the versions match!
 [dependencies]
-password-hash = "0.3.0"
+password-hash = "0.3.2"
 rand_core = "0.6.3"
-chrono= {version = "0.4.19", features = [] }
+chrono= { version = "0.4.19", features = [] }
 
 #Recomened hashing algorithms
-argon2 = { version = "0.3", features = ["std"] }
-scrypt = {version = "0.8.0", optional= true}
+argon2 = { version = "0.3.1", features = ["std"] }
+scrypt = { version = "0.8.0", optional = true }
 
 [dev-dependencies]
 sqlite3 = "0.24.0"
