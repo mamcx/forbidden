@@ -50,7 +50,7 @@ pub trait IdentityProvider<Credential, Token> {
     fn logout(&self, token: &Token) -> ResultAuth<bool>;
 }
 
-/// An identity provider (IDP) that can authenticate a user with [UserPass] credential.
+/// An identity provider (IDP) that can authenticate a user with [UserPassForm] credential.
 pub trait IdentityProviderUserPwd<Token>: IdentityProvider<UserPassForm, Token> {
     fn login(&self, identity: &UserPassForm) -> ResultAuth<Token> {
         self.verify_password(identity)
@@ -59,7 +59,7 @@ pub trait IdentityProviderUserPwd<Token>: IdentityProvider<UserPassForm, Token> 
     fn verify_password(&self, credentials: &UserPassForm) -> ResultAuth<Token>;
 }
 
-/// An identity provider (IDP) that can authenticate a user with [EmailPass] credential.
+/// An identity provider (IDP) that can authenticate a user with [EmailPassForm] credential.
 pub trait IdentityProviderEmailPwd<Token>: IdentityProvider<EmailPassForm, Token> {
     fn login(&self, identity: &EmailPassForm) -> ResultAuth<Token> {
         self.verify_password(identity)

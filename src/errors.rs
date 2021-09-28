@@ -1,3 +1,5 @@
+use std::error::Error;
+
 pub type ResultAuth<T> = Result<T, AuthError>;
 pub type ResultPwd<T> = Result<T, PasswordError>;
 
@@ -18,6 +20,7 @@ impl From<password_hash::Error> for PasswordError {
 
 #[derive(Debug)]
 pub enum AuthError {
+    Other(Box<dyn Error>),
     Password(PasswordError),
     IdentityNotFound { named: String },
     EmailNotFound { email: String },

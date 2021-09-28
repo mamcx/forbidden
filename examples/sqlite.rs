@@ -12,13 +12,17 @@ const TABLES: &str = "
 CREATE TABLE users (name TEXT, role TEXT, pwd TEXT);
 ";
 
-// Check the password is one of the approved!
+// Assert the password is safe, I promise!
 struct ByPass {}
 
 impl PasswordIsSafe for ByPass {
     fn is_safe(&self, _raw: &str) -> ResultPwd<()> {
         Ok(())
     }
+}
+
+fn to_err(err: sqlite3::Error) -> AuthError {
+    AuthError::Other(Box::new(err))
 }
 
 struct SqliteProvider {
@@ -51,18 +55,17 @@ impl IdentityProvider<UserPassForm, String> for SqliteProvider {
         let mut cursor = self
             .db
             .prepare("SELECT name, pwd FROM users WHERE name = ?")
-            .unwrap()
+            .map_err(to_err)?
             .cursor();
 
-        cursor.bind(&[sqlite3::Value::String(id.into())]).unwrap();
+        cursor
+            .bind(&[sqlite3::Value::String(id.into())])
+            .map_err(to_err)?;
 
         while let Some(row) = cursor.next().unwrap() {
             let pwd = Password::new(&row[1].as_string().unwrap_or_default())?;
 
-            return Ok(Some(UserPass::new(
-                &row[0].as_string().unwrap_or_default(),
-                pwd,
-            )));
+            return Ok(Some(UserPass::new(&row[0].as_string().unwrap(), pwd)));
         }
 
         Ok(None)

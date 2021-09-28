@@ -4,7 +4,7 @@
 //! an user identity & user account are not always the same thing, and because is now common for give several auth mechanism to the users,
 //! is desirable to account for this.
 
-/// Represent an credential/user using common username/password.
+/// Represent an credential using username/password.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct CredentialUser {
     pub username: String,
@@ -18,7 +18,7 @@ impl CredentialUser {
     }
 }
 
-/// Represent an credential/user using common email/password.
+/// Represent an credential using email/password.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct CredentialEmail {
     pub email: String,

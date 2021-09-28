@@ -1,6 +1,6 @@
 //! A common set of user structs that implement [Identity].
 //!
-//! A User can be authenticated with an [crate::credentials] and could have many of them.
+//! A User can be authenticated with many [crate::credentials] that link to it.
 
 use std::collections::HashMap;
 
@@ -10,7 +10,7 @@ use crate::prelude::*;
 /// The default username for an admin user
 pub const USERNAME_ADMIN: &str = "admin";
 
-/// Represent an full user with the most common set of the fields.
+/// Represent a full user with the most common set of fields.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct User {
     /// A global, unique-id.
@@ -83,7 +83,7 @@ impl Identity for UserAnonymous {
     }
 }
 
-/// Represent an credential/user using common username/password.
+/// Represent a user using a username/password.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UserPass {
     pub username: String,
@@ -111,7 +111,7 @@ impl Identity for UserPass {
     }
 }
 
-/// Represent an credential/user using common email/password.
+/// Represent a user using an email/password.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct EmailPass {
     pub email: String,

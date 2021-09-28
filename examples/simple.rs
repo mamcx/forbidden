@@ -1,3 +1,4 @@
+/// A simple in-memory IDP
 use forbidden::forms::UserPassForm;
 use forbidden::prelude::*;
 use forbidden::users::UserPass;
@@ -6,6 +7,7 @@ const TEST_PWD: &str = "1";
 const USER_1: &str = "user1";
 const USER_2: &str = "user2";
 
+// Assert the password is safe, I promise!
 struct ByPass {}
 
 impl PasswordIsSafe for ByPass {

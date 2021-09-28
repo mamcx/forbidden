@@ -1,6 +1,6 @@
-//! A common set of forms structs used to send authentication request  to an [IdentityStore].
+//! A common set of forms structs used to send authentication request  to an [crate::identity::IdentityProvider].
 
-/// Represent an Form using common username/password.
+/// Represent a Form using username/password.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UserPassForm {
     pub username: String,
@@ -16,7 +16,7 @@ impl UserPassForm {
     }
 }
 
-/// Represent a Form using common email/password.
+/// Represent a Form using email/password.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct EmailPassForm {
     pub email: String,
