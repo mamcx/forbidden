@@ -1,6 +1,6 @@
 [package]
 name = "forbidden"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Mario Alejandro Montoya <mamcx@elmalabarista.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/mamcx/forbidden"
