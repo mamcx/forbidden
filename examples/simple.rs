@@ -30,34 +30,24 @@ impl TestProvider {
     }
 }
 
-impl IdentityProvider<UserPassForm, String> for TestProvider {
+/// Log in with credential [UserPassForm] and return token as [String]
+impl IdentityProvider<UserPassForm> for TestProvider {
     type Identity = UserPass;
 
     fn find(&self, id: &str) -> ResultAuth<Option<Self::Identity>> {
         Ok(self.users.iter().find(|x| x.identity_id() == id).cloned())
     }
 
-    fn find_by_token(&self, _token: &String) -> ResultAuth<Option<Self::Identity>> {
+    fn find_by_token(&self, _token: &Token) -> ResultAuth<Option<Self::Identity>> {
         todo!()
     }
 
-    fn logout(&self, _token: &String) -> ResultAuth<bool> {
+    fn logout(&self, _token: &Token) -> ResultAuth<bool> {
         Ok(true)
     }
 }
 
-impl IdentityProviderUserPwd<String> for TestProvider {
-    fn verify_password(&self, credentials: &UserPassForm) -> ResultAuth<String> {
-        if let Some(user) = self.find(&credentials.username)? {
-            user.pwd.validate_password(&credentials.pwd)?;
-            Ok(credentials.username.clone())
-        } else {
-            Err(AuthError::UserNotFound {
-                named: credentials.username.clone(),
-            })
-        }
-    }
-}
+impl IdentityProviderUserPwd for TestProvider {}
 
 fn main() -> ResultAuth<()> {
     let idp = TestProvider::new();

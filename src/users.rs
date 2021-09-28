@@ -64,6 +64,10 @@ impl Identity for User {
     fn credentials(&self) -> Vec<Credential> {
         vec![CredentialUser::new(&self.user_name).into()]
     }
+
+    fn verify_challenge(&self, against: &str) -> ResultPwd<()> {
+        self.password.validate_password(against)
+    }
 }
 
 /// Represent an anonymous user.
@@ -80,6 +84,10 @@ impl Identity for UserAnonymous {
 
     fn credentials(&self) -> Vec<Credential> {
         vec![Credential::Anon(self.anon_id.clone())]
+    }
+
+    fn verify_challenge(&self, _against: &str) -> ResultPwd<()> {
+        Err(PasswordError::InvalidPassword)
     }
 }
 
@@ -109,6 +117,10 @@ impl Identity for UserPass {
             username: self.username.clone(),
         })]
     }
+
+    fn verify_challenge(&self, against: &str) -> ResultPwd<()> {
+        self.pwd.validate_password(against)
+    }
 }
 
 /// Represent a user using an email/password.
@@ -127,5 +139,9 @@ impl Identity for EmailPass {
         vec![Credential::UserEmail(CredentialEmail {
             email: self.email.clone(),
         })]
+    }
+
+    fn verify_challenge(&self, against: &str) -> ResultPwd<()> {
+        self.pwd.validate_password(against)
     }
 }

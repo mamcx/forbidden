@@ -4,6 +4,7 @@ pub mod forms;
 pub mod identity;
 pub mod password;
 mod properties;
+pub mod token;
 pub mod users;
 
 pub mod prelude {
@@ -13,4 +14,5 @@ pub mod prelude {
     pub use crate::password;
     pub use crate::password::{Password, PasswordIsSafe};
     pub use crate::properties::Properties;
+    pub use crate::token::Token;
 }

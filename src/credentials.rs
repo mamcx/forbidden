@@ -24,6 +24,13 @@ pub struct CredentialEmail {
     pub email: String,
 }
 
+impl CredentialEmail {
+    pub fn new(username: &str) -> Self {
+        Self {
+            email: username.into(),
+        }
+    }
+}
 /// Represent an opaque Token given, probably, by a external auth system.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct CredentialToken {

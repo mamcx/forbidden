@@ -48,7 +48,7 @@ impl SqliteProvider {
     }
 }
 
-impl IdentityProvider<UserPassForm, String> for SqliteProvider {
+impl IdentityProvider<UserPassForm> for SqliteProvider {
     type Identity = UserPass;
 
     fn find(&self, id: &str) -> ResultAuth<Option<Self::Identity>> {
@@ -71,27 +71,16 @@ impl IdentityProvider<UserPassForm, String> for SqliteProvider {
         Ok(None)
     }
 
-    fn find_by_token(&self, _token: &String) -> ResultAuth<Option<Self::Identity>> {
+    fn find_by_token(&self, _token: &Token) -> ResultAuth<Option<Self::Identity>> {
         todo!()
     }
 
-    fn logout(&self, _token: &String) -> ResultAuth<bool> {
+    fn logout(&self, _token: &Token) -> ResultAuth<bool> {
         Ok(true)
     }
 }
 
-impl IdentityProviderUserPwd<String> for SqliteProvider {
-    fn verify_password(&self, credentials: &UserPassForm) -> ResultAuth<String> {
-        if let Some(user) = self.find(&credentials.username)? {
-            user.pwd.validate_password(&credentials.pwd)?;
-            Ok(credentials.username.clone())
-        } else {
-            Err(AuthError::UserNotFound {
-                named: credentials.username.clone(),
-            })
-        }
-    }
-}
+impl IdentityProviderUserPwd for SqliteProvider {}
 
 fn main() -> ResultAuth<()> {
     let idp = SqliteProvider::new().unwrap();

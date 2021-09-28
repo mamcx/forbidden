@@ -2,9 +2,11 @@
 use std::collections::HashMap;
 
 use crate::credentials::Credential;
-use crate::errors::ResultAuth;
+use crate::errors::{ResultAuth, ResultPwd};
 use crate::forms::{EmailPassForm, UserPassForm};
+use crate::prelude::AuthError;
 use crate::properties::Properties;
+use crate::token::Token;
 
 /// A default realm name
 pub const REALM_DEFAULT: &str = "GLOBAL";
@@ -38,10 +40,12 @@ pub trait Identity {
     fn properties(&self) -> Option<HashMap<String, Properties>> {
         None
     }
+    /// Verify the security challenge (like a password) is valid for this identity
+    fn verify_challenge(&self, against: &str) -> ResultPwd<()>;
 }
 
 /// An identity provider (IDP) is a service that can authenticate a user with a [crate::credentials] and return an Token.
-pub trait IdentityProvider<Credential, Token> {
+pub trait IdentityProvider<Credential> {
     type Identity: Identity;
 
     fn find(&self, id: &str) -> ResultAuth<Option<Self::Identity>>;
@@ -51,21 +55,39 @@ pub trait IdentityProvider<Credential, Token> {
 }
 
 /// An identity provider (IDP) that can authenticate a user with [UserPassForm] credential.
-pub trait IdentityProviderUserPwd<Token>: IdentityProvider<UserPassForm, Token> {
+pub trait IdentityProviderUserPwd: IdentityProvider<UserPassForm> {
     fn login(&self, identity: &UserPassForm) -> ResultAuth<Token> {
         self.verify_password(identity)
     }
 
-    fn verify_password(&self, credentials: &UserPassForm) -> ResultAuth<Token>;
+    fn verify_password(&self, credentials: &UserPassForm) -> ResultAuth<Token> {
+        if let Some(user) = self.find(&credentials.username)? {
+            user.verify_challenge(&credentials.pwd)?;
+            Ok(credentials.into())
+        } else {
+            Err(AuthError::UserNotFound {
+                named: credentials.username.clone(),
+            })
+        }
+    }
 }
 
 /// An identity provider (IDP) that can authenticate a user with [EmailPassForm] credential.
-pub trait IdentityProviderEmailPwd<Token>: IdentityProvider<EmailPassForm, Token> {
+pub trait IdentityProviderEmailPwd: IdentityProvider<EmailPassForm> {
     fn login(&self, identity: &EmailPassForm) -> ResultAuth<Token> {
         self.verify_password(identity)
     }
 
-    fn verify_password(&self, credentials: &EmailPassForm) -> ResultAuth<Token>;
+    fn verify_password(&self, credentials: &EmailPassForm) -> ResultAuth<Token> {
+        if let Some(user) = self.find(&credentials.email)? {
+            user.verify_challenge(&credentials.pwd)?;
+            Ok(credentials.into())
+        } else {
+            Err(AuthError::EmailNotFound {
+                email: credentials.email.clone(),
+            })
+        }
+    }
 }
 
 #[cfg(test)]
