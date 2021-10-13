@@ -90,7 +90,8 @@ fn main() -> ResultAuth<()> {
     let mut form = UserPassForm::new(USER_1, "wrong");
     assert!(idp.login(&form).is_err());
     form.pwd = TEST_PWD.into();
-    assert!(idp.login(&form).is_ok());
+    let token = idp.login(&form).unwrap();
+    assert_eq!(token.identity_id(), USER_1);
 
     Ok(())
 }
