@@ -36,7 +36,7 @@ impl Token {
     /// Extract the global from the [crate::identity]
     pub fn identity_id(&self) -> &str {
         match &self.credential {
-            Credential::Anon(x) => &x,
+            Credential::Anon(x) => x,
             Credential::User(x) => &x.username,
             Credential::UserEmail(x) => &x.email,
             Credential::Token(x) => &x.data,
